@@ -28,9 +28,21 @@ export function Header() {
   const [open, setOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [scrollProgress, setScrollProgress] = useState(0)
+  const [lastScrollY, setLastScrollY] = useState(0)
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
   const pathname = usePathname()
   const isHome = pathname === "/"
   const isSolid = isScrolled || !isHome
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -38,11 +50,34 @@ export function Header() {
       setIsScrolled(scrollPos > 50)
       // Calcula progresso de 0 a 1 nos primeiros 150px de scroll
       setScrollProgress(Math.min(scrollPos / 150, 1))
+      
+      // Lógica para esconder/mostrar header no mobile
+      if (isMobile) {
+        const scrollDifference = scrollPos - lastScrollY
+        
+        // Se rolar para baixo mais de 10px, esconde o header
+        if (scrollDifference > 10 && scrollPos > 100) {
+          setIsHeaderVisible(false)
+        }
+        // Se rolar para cima, mostra o header
+        else if (scrollDifference < -10) {
+          setIsHeaderVisible(true)
+        }
+        // Se estiver no topo, sempre mostra
+        if (scrollPos < 50) {
+          setIsHeaderVisible(true)
+        }
+        
+        setLastScrollY(scrollPos)
+      } else {
+        // No desktop, sempre visível
+        setIsHeaderVisible(true)
+      }
     }
     handleScroll()
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+  }, [lastScrollY, isMobile])
 
   return (
     <>
@@ -51,6 +86,8 @@ export function Header() {
         className={cn(
           "fixed top-0 left-0 right-0 h-10 w-full z-40",
           "transition-all duration-700 ease-out",
+          "lg:translate-y-0",
+          isHeaderVisible ? "translate-y-0" : "-translate-y-full",
           isSolid
             ? "bg-background/95 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
             : "bg-gradient-to-br from-primary via-primary/95 to-primary/80"
@@ -66,12 +103,15 @@ export function Header() {
         className={cn(
           "fixed top-10 left-0 right-0 z-50",
           "transition-all duration-700 ease-out",
+          "lg:translate-y-0",
+          isHeaderVisible ? "translate-y-0" : "-translate-y-full",
           isSolid
             ? "bg-background/95 backdrop-blur-xl border-b border-black/10 shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
             : "bg-gradient-to-br from-primary via-primary/95 to-primary/80"
         )}
         style={{
-          transform: `translateY(${scrollProgress * -2}px)`,
+          // Aplica animação de scroll progressivo apenas no desktop
+          ...(!isMobile ? { transform: `translateY(${scrollProgress * -2}px)` } : {}),
         }}
       >
         <div className="container">
